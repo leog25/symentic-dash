@@ -37,6 +37,11 @@ interface EditEngramForm {
   newTag: string
 }
 
+interface AddEnrichmentForm {
+  title: string
+  content: string
+}
+
 const EngramProfileDashboard: React.FC = () => {
   const [profiles, setProfiles] = useState<EngramProfile[]>([
     {
@@ -160,8 +165,8 @@ const EngramProfileDashboard: React.FC = () => {
   const [showDetailedView, setShowDetailedView] = useState(false)
   const [selectedProfile, setSelectedProfile] = useState<EngramProfile | null>(null)
   const [showEnrichmentModal, setShowEnrichmentModal] = useState(false)
-  const [selectedProfileForEnrichment, setSelectedProfileForEnrichment] = useState<string | null>(null)
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null)
+  const [selectedProfileForEnrichment, setSelectedProfileForEnrichment] = useState<string | null>(null)
 
   // Form state for new engram
   const [newEngramForm, setNewEngramForm] = useState<NewEngramForm>({
@@ -183,6 +188,12 @@ const EngramProfileDashboard: React.FC = () => {
     description: '',
     tags: [],
     newTag: ''
+  })
+
+  // Form state for adding enrichment
+  const [addEnrichmentForm, setAddEnrichmentForm] = useState<AddEnrichmentForm>({
+    title: '',
+    content: ''
   })
 
   // Get all unique tags
@@ -242,6 +253,7 @@ const EngramProfileDashboard: React.FC = () => {
       .replace(/`(.*?)`/g, '<code>$1</code>')
   }
 
+  // Add enrichment to profile function
   const addEnrichmentToProfile = (profileId: string, enrichment: Omit<Enrichment, 'id'>) => {
     const newEnrichment: Enrichment = {
       ...enrichment,
@@ -273,6 +285,51 @@ const EngramProfileDashboard: React.FC = () => {
     setSelectedProfile(null)
     setShowDetailedView(false)
     setExpandedEnrichments({}) // Reset expanded enrichments when closing
+  }
+
+  // Add Enrichment Form Functions
+  const handleAddEnrichmentFormChange = (field: keyof AddEnrichmentForm, value: string) => {
+    setAddEnrichmentForm(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const openAddEnrichmentModal = (profileId: string) => {
+    setSelectedProfileForEnrichment(profileId)
+    setShowEnrichmentModal(true)
+    setAddEnrichmentForm({ title: '', content: '' })
+  }
+
+  const closeAddEnrichmentModal = () => {
+    setShowEnrichmentModal(false)
+    setSelectedProfileForEnrichment(null)
+    setAddEnrichmentForm({ title: '', content: '' })
+  }
+
+  const handleSubmitAddEnrichment = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Basic validation
+    if (!addEnrichmentForm.title.trim() || !addEnrichmentForm.content.trim()) {
+      alert('Please fill in both title and content fields')
+      return
+    }
+
+    if (!selectedProfileForEnrichment) {
+      alert('No profile selected for enrichment')
+      return
+    }
+
+    // Add the enrichment
+    addEnrichmentToProfile(selectedProfileForEnrichment, {
+      title: addEnrichmentForm.title.trim(),
+      content: addEnrichmentForm.content.trim(),
+      timestamp: new Date().toISOString()
+    })
+    
+    // Close modal and reset form
+    closeAddEnrichmentModal()
   }
 
   // New Engram Form Functions
@@ -593,10 +650,7 @@ const EngramProfileDashboard: React.FC = () => {
                 </button>
                 <button
                   className="add-enrichment-btn"
-                  onClick={() => {
-                    setSelectedProfileForEnrichment(selectedProfile.id)
-                    setShowEnrichmentModal(true)
-                  }}
+                  onClick={() => openAddEnrichmentModal(selectedProfile.id)}
                   title="Add enrichment"
                 >
                   + add memory
@@ -899,12 +953,61 @@ const EngramProfileDashboard: React.FC = () => {
         </div>
       )}
 
-      {showEnrichmentModal && (
-        <div className="modal-overlay" onClick={() => setShowEnrichmentModal(false)}>
-          <div className="modal glass-card" onClick={(e) => e.stopPropagation()}>
-            <h3>Add Enrichment</h3>
-            <p>Enrichment modal implementation coming soon...</p>
-            <button onClick={() => setShowEnrichmentModal(false)}>Close</button>
+      {/* Add Enrichment Modal */}
+      {showEnrichmentModal && selectedProfileForEnrichment && (
+        <div className="modal-overlay" onClick={closeAddEnrichmentModal}>
+          <div className="modal glass-card new-engram-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="gradient-text">Add Memory</h3>
+              <button 
+                className="modal-close-btn"
+                onClick={closeAddEnrichmentModal}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitAddEnrichment} className="new-engram-form">
+              <div className="form-section">
+                <label className="form-label">Memory Title *</label>
+                <input
+                  type="text"
+                  value={addEnrichmentForm.title}
+                  onChange={(e) => handleAddEnrichmentFormChange('title', e.target.value)}
+                  placeholder="e.g., 'Key Insight', 'Bug Discovery', 'Design Decision'"
+                  className="form-input glass-card"
+                  required
+                />
+              </div>
+
+              <div className="form-section">
+                <label className="form-label">Memory Content *</label>
+                <textarea
+                  value={addEnrichmentForm.content}
+                  onChange={(e) => handleAddEnrichmentFormChange('content', e.target.value)}
+                  placeholder="Describe the memory, insight, or interaction. Supports **bold**, *italic*, and `code` formatting."
+                  className="form-textarea glass-card"
+                  rows={6}
+                  required
+                />
+              </div>
+
+              <div className="form-actions">
+                <button 
+                  type="button" 
+                  onClick={closeAddEnrichmentModal}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="btn-primary"
+                >
+                  Add Memory
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
